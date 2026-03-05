@@ -285,7 +285,11 @@ export default function Home() {
           {/* SAT / SHIP mode toggle */}
           <div className="flex bg-gray-900/90 border border-gray-700/50 rounded-lg overflow-hidden">
             <button
-              onClick={() => setMode('sat')}
+              onClick={() => {
+                setMode('sat')
+                if (!showSatellites) toggleSatellites()
+                if (showVessels) toggleVessels()
+              }}
               className={`px-4 py-1.5 font-mono text-xs tracking-wider transition-all ${
                 mode === 'sat'
                   ? 'bg-intel-cyan/20 text-intel-cyan border-r border-intel-cyan/30'
@@ -295,7 +299,11 @@ export default function Home() {
               SAT
             </button>
             <button
-              onClick={() => setMode('ship')}
+              onClick={() => {
+                setMode('ship')
+                if (!showVessels) toggleVessels()
+                if (showSatellites) toggleSatellites()
+              }}
               className={`px-4 py-1.5 font-mono text-xs tracking-wider transition-all ${
                 mode === 'ship'
                   ? 'bg-blue-500/20 text-blue-400'

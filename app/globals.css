@@ -91,10 +91,11 @@ body {
   color: #ff3d3d !important;
 }
 
-/* Satellite icon (no background) */
+/* Satellite / vessel icons (no background) */
 .sat-icon,
 .vessel-icon,
-.flight-icon {
+.flight-icon,
+.ship-emoji-marker {
   background: none !important;
   border: none !important;
 }

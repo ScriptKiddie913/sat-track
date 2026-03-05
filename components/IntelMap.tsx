@@ -423,78 +423,102 @@ export default function IntelMap() {
     })
   }, [showFlights])
 
-  // AIS Vessels — static + live, viewport culled
+  // AIS Vessels — static + live, incremental updates with viewport culling
   useEffect(() => {
     if (!mapRef.current) return
-    vesselRef.current.forEach((m) => mapRef.current!.removeLayer(m))
-    vesselRef.current.clear()
-    if (!showVessels) return
 
-    const bounds = mapRef.current.getBounds().pad(0.3)
-
-    // Merge static vessels + multi-source API vessels + live WebSocket vessels
-    const allVessels = [
-      ...AIS_VESSELS,
-      ...multiSourceVessels.map((v: AISVessel) => ({
-        id: v.id,
-        name: v.name,
-        type: v.type,
-        lat: v.lat,
-        lng: v.lng,
-        course: v.course,
-        speed: v.speed,
-        flag: v.flag,
-      })),
-      ...liveVessels.map((v: AISVessel) => ({
-        id: v.id,
-        name: v.name,
-        type: v.type,
-        lat: v.lat,
-        lng: v.lng,
-        course: v.course,
-        speed: v.speed,
-        flag: v.flag,
-      })),
-    ]
-
-    // Deduplicate by id (live takes priority for same id)
-    const seen = new Set<string>()
-    const deduped = []
-    for (let i = allVessels.length - 1; i >= 0; i--) {
-      if (!seen.has(allVessels[i].id)) {
-        seen.add(allVessels[i].id)
-        deduped.push(allVessels[i])
-      }
+    if (!showVessels) {
+      vesselRef.current.forEach((m) => mapRef.current!.removeLayer(m))
+      vesselRef.current.clear()
+      return
     }
 
-    deduped.forEach((vessel) => {
-      if (!bounds.contains([vessel.lat, vessel.lng])) return
-      const marker = L.marker([vessel.lat, vessel.lng], {
-        icon: createShipEmojiMarker(vessel.type, vessel.course),
-      }).addTo(mapRef.current!)
+    const map = mapRef.current
+
+    const renderVessels = () => {
+      if (!mapRef.current) return
+      const bounds = mapRef.current.getBounds().pad(0.3)
+
+      // Merge static + multi-source + live (live takes priority)
+      const allVessels = [
+        ...AIS_VESSELS,
+        ...multiSourceVessels.map((v: AISVessel) => ({
+          id: v.id, name: v.name, type: v.type,
+          lat: v.lat, lng: v.lng, course: v.course, speed: v.speed, flag: v.flag,
+        })),
+        ...liveVessels.map((v: AISVessel) => ({
+          id: v.id, name: v.name, type: v.type,
+          lat: v.lat, lng: v.lng, course: v.course, speed: v.speed, flag: v.flag,
+        })),
+      ]
+
+      const seen = new Set<string>()
+      const deduped: typeof allVessels = []
+      for (let i = allVessels.length - 1; i >= 0; i--) {
+        if (!seen.has(allVessels[i].id)) {
+          seen.add(allVessels[i].id)
+          deduped.push(allVessels[i])
+        }
+      }
+
+      // Remove markers no longer in data or out of bounds
+      const incomingIds = new Set(deduped.map((v) => v.id))
+      vesselRef.current.forEach((m, id) => {
+        if (!incomingIds.has(id)) {
+          mapRef.current!.removeLayer(m)
+          vesselRef.current.delete(id)
+        }
+      })
 
       const tc: Record<string, string> = {
-        warship: '#ff1744', military: '#ff1744', cargo: '#42a5f5', tanker: '#ff7043', passenger: '#66bb6a',
-        fishing: '#fdd835', tug: '#ab47bc', research: '#00bcd4', 'high speed': '#e91e63',
-        sar: '#76ff03', pilot: '#ff9800', unknown: '#78909c',
+        warship: '#ff1744', military: '#ff1744', cargo: '#42a5f5', tanker: '#ff7043',
+        passenger: '#66bb6a', fishing: '#fdd835', tug: '#ab47bc', research: '#00bcd4',
+        'high speed': '#e91e63', sar: '#76ff03', pilot: '#ff9800', unknown: '#78909c',
       }
-      const typeColor = tc[(vessel.type || '').toLowerCase()] || '#78909c'
 
-      marker.bindPopup(
-        `<div style="font-family:monospace;font-size:11px;color:#fff;background:#0d0d0d;padding:10px;border-radius:6px;border:1px solid ${typeColor}33">
-          <div style="border-left:3px solid ${typeColor};padding-left:8px;margin-bottom:4px">
-            <span style="color:${typeColor};font-weight:bold;font-size:12px">${vessel.flag} ${vessel.name}</span>
-          </div>
-          <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin-top:4px">
-            <span style="color:#666">TYPE</span><span style="color:${typeColor}">${(vessel.type || 'Unknown').toUpperCase()}</span>
-            <span style="color:#666">HDG</span><span>${vessel.course}°</span>
-            <span style="color:#666">SPD</span><span>${vessel.speed} kn</span>
-          </div>
-        </div>`,
-        { className: 'intel-popup' }
-      )
-      vesselRef.current.set(vessel.id, marker)
-    })
+      deduped.forEach((vessel) => {
+        const inBounds = bounds.contains([vessel.lat, vessel.lng])
+        const existing = vesselRef.current.get(vessel.id)
+
+        if (!inBounds) {
+          if (existing) {
+            mapRef.current!.removeLayer(existing)
+            vesselRef.current.delete(vessel.id)
+          }
+          return
+        }
+
+        if (existing) {
+          // Move existing marker in-place (no flicker)
+          existing.setLatLng([vessel.lat, vessel.lng])
+        } else {
+          const typeColor = tc[(vessel.type || '').toLowerCase()] || '#78909c'
+          const marker = L.marker([vessel.lat, vessel.lng], {
+            icon: createShipEmojiMarker(vessel.type, vessel.course),
+          }).addTo(mapRef.current!)
+          marker.bindPopup(
+            `<div style="font-family:monospace;font-size:11px;color:#fff;background:#0d0d0d;padding:10px;border-radius:6px;border:1px solid ${typeColor}33">
+              <div style="border-left:3px solid ${typeColor};padding-left:8px;margin-bottom:4px">
+                <span style="color:${typeColor};font-weight:bold;font-size:12px">${vessel.flag} ${vessel.name}</span>
+              </div>
+              <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin-top:4px">
+                <span style="color:#666">TYPE</span><span style="color:${typeColor}">${(vessel.type || 'Unknown').toUpperCase()}</span>
+                <span style="color:#666">HDG</span><span>${vessel.course}°</span>
+                <span style="color:#666">SPD</span><span>${vessel.speed} kn</span>
+              </div>
+            </div>`,
+            { className: 'intel-popup' }
+          )
+          vesselRef.current.set(vessel.id, marker)
+        }
+      })
+    }
+
+    renderVessels()
+    map.on('moveend zoomend', renderVessels)
+    return () => {
+      map.off('moveend zoomend', renderVessels)
+    }
   }, [showVessels, liveVessels, multiSourceVessels])
 
   // Ground Stations
