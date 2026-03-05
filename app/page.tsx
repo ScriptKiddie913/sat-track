@@ -54,6 +54,12 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<'sat' | 'ship'>('sat')
 
+  // Sync vessel visibility with SAT/SHIP mode on mount — start with vessels hidden (SAT mode)
+  useEffect(() => {
+    if (showVessels) toggleVessels()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // Fetch TLE data
   const fetchTLE = useCallback(async () => {
     setLoading(true)
@@ -275,7 +281,7 @@ export default function Home() {
           {/* SAT / SHIP mode toggle */}
           <div className="flex bg-gray-900/90 border border-gray-700/50 rounded-lg overflow-hidden">
             <button
-              onClick={() => setMode('sat')}
+              onClick={() => { setMode('sat'); if (showVessels) toggleVessels() }}
               className={`px-4 py-1.5 font-mono text-xs tracking-wider transition-all ${
                 mode === 'sat'
                   ? 'bg-intel-cyan/20 text-intel-cyan border-r border-intel-cyan/30'
@@ -285,7 +291,7 @@ export default function Home() {
               SAT
             </button>
             <button
-              onClick={() => setMode('ship')}
+              onClick={() => { setMode('ship'); if (!showVessels) toggleVessels() }}
               className={`px-4 py-1.5 font-mono text-xs tracking-wider transition-all ${
                 mode === 'ship'
                   ? 'bg-blue-500/20 text-blue-400'
