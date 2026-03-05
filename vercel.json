@@ -6,11 +6,7 @@
     }
   },
   "routes": [
-    { "src": "/", "dest": "/public/index.html" },
-    { "src": "/api/catalog", "dest": "/api/catalog.js" },
-    { "src": "/api/positions", "dest": "/api/positions.js" },
-    { "src": "/api/ground-track", "dest": "/api/ground-track.js" },
-    { "src": "/api/passes", "dest": "/api/passes.js" },
+    { "src": "/api/([^?]+)(.*)", "dest": "/api/$1.js$2" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/public/index.html" }
   ]
