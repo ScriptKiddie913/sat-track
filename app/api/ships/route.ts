@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 
+// Prevent Next.js static caching of this route
+export const dynamic = 'force-dynamic'
+
 /* ── Ship type classifier (matches vessel-tra logic) ── */
 function shipTypeName(t: number): string {
   if (t === 30) return 'Fishing'
@@ -64,7 +67,7 @@ interface ShipRecord {
 }
 
 async function fetchWithTimeout(
-  url: string, headers: Record<string, string> = {}, timeoutMs = 7000
+  url: string, headers: Record<string, string> = {}, timeoutMs = 5000
 ): Promise<Response> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)

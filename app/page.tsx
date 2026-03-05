@@ -90,33 +90,44 @@ export default function Home() {
     return () => clearInterval(iv)
   }, [setQuakes, setEvents])
 
-  // Live AIS ship tracking via AISStream WebSocket (client-side)
+  // Live AIS ship tracking — direct client-side WebSocket to AISStream.
+  // Runs entirely in the browser, so Vercel's serverless/edge runtime is never
+  // involved. The vessel-tra method (server-side proxy) is available at
+  // /api/ships/live but is used only as an optional SSE supplement; the primary
+  // real-time feed is this direct connection which works on all Vercel plans.
   useEffect(() => {
     const shipMap = new Map<string, { id: string; name: string; type: string; lat: number; lng: number; course: number; speed: number; flag: string }>()
+    // Per-connection static data cache keyed by MMSI
+    const staticCache = new Map<string, { name: string; type: string }>()
     let ws: WebSocket | null = null
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
     let flushInterval: ReturnType<typeof setInterval> | null = null
     let closed = false
 
+    // MMSI prefix (first 3 digits) → flag emoji
     const MID: Record<string, string> = {
-      '201':'🇦🇱','205':'🇧🇪','209':'🇨🇾','211':'🇩🇪','219':'🇩🇰','220':'🇩🇰',
-      '224':'🇪🇸','225':'🇪🇸','226':'🇫🇷','227':'🇫🇷','228':'🇫🇷','230':'🇫🇮',
-      '232':'🇬🇧','233':'🇬🇧','234':'🇬🇧','235':'🇬🇧','237':'🇬🇷','238':'🇭🇷',
-      '240':'🇬🇷','244':'🇳🇱','245':'🇳🇱','247':'🇮🇹','248':'🇲🇹','249':'🇲🇹',
-      '255':'🇵🇹','256':'🇲🇹','257':'🇳🇴','258':'🇳🇴','259':'🇳🇴','261':'🇵🇱',
-      '263':'🇵🇹','265':'🇸🇪','266':'🇸🇪','271':'🇹🇷','272':'🇺🇦','273':'🇷🇺',
-      '301':'🇦🇮','303':'🇺🇸','308':'🇧🇸','311':'🇧🇸','316':'🇨🇦','338':'🇺🇸',
-      '345':'🇲🇽','351':'🇵🇦','352':'🇵🇦','353':'🇵🇦','354':'🇵🇦','355':'🇵🇦',
-      '356':'🇵🇦','357':'🇵🇦','366':'🇺🇸','367':'🇺🇸','368':'🇺🇸','369':'🇺🇸',
-      '370':'🇵🇦','371':'🇵🇦','372':'🇵🇦','373':'🇵🇦','374':'🇵🇦',
-      '401':'🇦🇫','403':'🇸🇦','405':'🇧🇩','412':'🇨🇳','413':'🇨🇳','414':'🇨🇳',
-      '416':'🇹🇼','422':'🇮🇷','425':'🇮🇶','428':'🇮🇱','431':'🇯🇵','432':'🇯🇵',
-      '440':'🇰🇷','441':'🇰🇷','447':'🇰🇼','461':'🇴🇲','466':'🇶🇦',
-      '470':'🇦🇪','471':'🇦🇪','477':'🇭🇰','503':'🇦🇺','512':'🇳🇿','525':'🇮🇩',
-      '533':'🇲🇾','538':'🇲🇭','548':'🇵🇭','559':'🇸🇬','563':'🇸🇬','564':'🇸🇬',
-      '565':'🇸🇬','567':'🇹🇭','574':'🇻🇳','601':'🇿🇦','603':'🇦🇴','605':'🇩🇿',
-      '622':'🇪🇬','636':'🇱🇷','637':'🇱🇷','657':'🇳🇬','701':'🇦🇷','710':'🇧🇷',
-      '725':'🇨🇱','730':'🇨🇴','760':'🇵🇪','770':'🇺🇾',
+      '201':'🇦🇱','202':'🇦🇩','203':'🇦🇹','205':'🇧🇪','206':'🇧🇾','207':'🇧🇬',
+      '209':'🇨🇾','210':'🇨🇾','211':'🇩🇪','213':'🇬🇪','214':'🇲🇩','215':'🇲🇹',
+      '216':'🇦🇲','218':'🇩🇪','219':'🇩🇰','220':'🇩🇰','224':'🇪🇸','225':'🇪🇸',
+      '226':'🇫🇷','227':'🇫🇷','228':'🇫🇷','229':'🇲🇹','230':'🇫🇮','231':'🇫🇴',
+      '232':'🇬🇧','233':'🇬🇧','234':'🇬🇧','235':'🇬🇧','236':'🇬🇮','237':'🇬🇷',
+      '238':'🇭🇷','239':'🇬🇷','240':'🇬🇷','241':'🇬🇷','242':'🇲🇦','243':'🇭🇺',
+      '244':'🇳🇱','245':'🇳🇱','246':'🇳🇱','247':'🇮🇹','248':'🇲🇹','249':'🇲🇹',
+      '250':'🇮🇪','251':'🇮🇸','252':'🇱🇮','253':'🇱🇺','254':'🇲🇨','255':'🇵🇹',
+      '257':'🇳🇴','258':'🇳🇴','259':'🇳🇴','261':'🇵🇱','265':'🇸🇪','266':'🇸🇪',
+      '271':'🇹🇷','272':'🇺🇦','273':'🇷🇺','275':'🇱🇻','276':'🇪🇪','277':'🇱🇹',
+      '303':'🇺🇸','308':'🇧🇸','316':'🇨🇦','319':'🇰🇾','338':'🇺🇸','339':'🇯🇲',
+      '351':'🇵🇦','352':'🇵🇦','353':'🇵🇦','354':'🇵🇦','355':'🇵🇦','366':'🇺🇸',
+      '367':'🇺🇸','368':'🇺🇸','369':'🇺🇸','370':'🇵🇦','371':'🇵🇦','372':'🇵🇦',
+      '412':'🇨🇳','413':'🇨🇳','414':'🇨🇳','416':'🇹🇼','422':'🇮🇷','431':'🇯🇵',
+      '432':'🇯🇵','440':'🇰🇷','441':'🇰🇷','477':'🇭🇰',
+      '503':'🇦🇺','506':'🇲🇲','512':'🇳🇿','514':'🇰🇭','515':'🇰🇭','525':'🇮🇩',
+      '533':'🇲🇾','548':'🇵🇭','559':'🇸🇬','563':'🇸🇬','564':'🇸🇬','565':'🇸🇬',
+      '566':'🇸🇬','567':'🇹🇭','574':'🇻🇳',
+      '601':'🇿🇦','605':'🇩🇿','610':'🇧🇯','613':'🇨🇲','615':'🇨🇬','622':'🇪🇬',
+      '634':'🇰🇪','636':'🇱🇷','642':'🇱🇾','650':'🇲🇿','655':'🇲🇼','657':'🇳🇬',
+      '701':'🇦🇷','710':'🇧🇷','720':'🇧🇴','725':'🇨🇱','730':'🇨🇴','750':'🇬🇾',
+      '770':'🇺🇾','775':'🇻🇪',
     }
 
     function shipTypeName(t: number): string {
@@ -127,21 +138,17 @@ export default function Home() {
       if (t >= 60 && t <= 69) return 'Passenger'
       if (t >= 70 && t <= 79) return 'Cargo'
       if (t >= 80 && t <= 89) return 'Tanker'
+      if (t === 50) return 'Pilot'
       if (t === 51) return 'SAR'
       return 'Unknown'
     }
 
     function connect() {
       if (closed) return
-      try {
-        ws = new WebSocket('wss://stream.aisstream.io/v0/stream')
-      } catch {
-        reconnectTimeout = setTimeout(connect, 10000)
-        return
-      }
+      ws = new WebSocket('wss://stream.aisstream.io/v0/stream')
 
       ws.onopen = () => {
-        ws?.send(JSON.stringify({
+        ws!.send(JSON.stringify({
           APIKey: '8b9d8625829bd9614947be967c141babc5931e79',
           BoundingBoxes: [[[-90, -180], [90, 180]]],
           FilterMessageTypes: ['PositionReport', 'ShipStaticData'],
@@ -151,39 +158,40 @@ export default function Home() {
       ws.onmessage = (event: MessageEvent) => {
         try {
           const msg = JSON.parse(String(event.data))
-          const mmsi = String(msg?.MetaData?.MMSI || '')
+          const mmsi = String(msg?.MetaData?.MMSI ?? '')
           if (!mmsi) return
           const mt = msg.MessageType
 
-          if (mt === 'PositionReport') {
-            const pr = msg.Message.PositionReport
-            const lat = pr?.Latitude
-            const lng = pr?.Longitude
+          if (mt === 'ShipStaticData') {
+            const sd = msg.Message?.ShipStaticData
+            if (sd) {
+              staticCache.set(mmsi, {
+                name: sd.Name?.trim() || staticCache.get(mmsi)?.name || '',
+                type: shipTypeName(sd.Type ?? 0),
+              })
+            }
+          } else if (mt === 'PositionReport') {
+            const pr = msg.Message?.PositionReport
+            if (!pr) return
+            const lat = pr.Latitude
+            const lng = pr.Longitude
             if (lat == null || lng == null || (lat === 0 && lng === 0)) return
-            const existing = shipMap.get(mmsi)
+            const cached = staticCache.get(mmsi)
             shipMap.set(mmsi, {
               id: mmsi,
-              name: existing?.name || String(msg.MetaData?.ShipName || '').trim() || 'IDENTIFYING...',
-              type: existing?.type || 'Unknown',
+              name: cached?.name || String(msg.MetaData?.ShipName ?? '').trim() || 'IDENTIFYING...',
+              type: cached?.type || 'Unknown',
               lat,
               lng,
-              course: pr.Cog || 0,
-              speed: pr.Sog || 0,
-              flag: existing?.flag || MID[mmsi.slice(0, 3)] || '🏳️',
+              course: pr.Cog ?? 0,
+              speed: pr.Sog ?? 0,
+              flag: MID[mmsi.slice(0, 3)] ?? '🏳️',
             })
-          } else if (mt === 'ShipStaticData') {
-            const sd = msg.Message.ShipStaticData
-            const existing = shipMap.get(mmsi)
-            if (existing) {
-              const newName = sd.Name?.trim()
-              if (newName) existing.name = newName
-              existing.type = shipTypeName(sd.Type || 0)
-            }
           }
-        } catch { /* ignore parse errors */ }
+        } catch { /* parse error — skip */ }
       }
 
-      ws.onerror = () => { try { ws?.close() } catch {} }
+      ws.onerror = () => { try { ws?.close() } catch { /* ignore */ } }
       ws.onclose = () => {
         if (!closed) {
           reconnectTimeout = setTimeout(connect, 5000)
@@ -193,11 +201,11 @@ export default function Home() {
 
     connect()
 
-    // Flush accumulated ships to store every 3 seconds
+    // Flush accumulated ships to the map store every 3 seconds
     flushInterval = setInterval(() => {
       if (shipMap.size > 0) {
         const vessels = Array.from(shipMap.values())
-        setLiveVessels(vessels.length > 1000 ? vessels.slice(-1000) : vessels)
+        setLiveVessels(vessels.length > 2000 ? vessels.slice(-2000) : vessels)
       }
     }, 3000)
 
@@ -205,7 +213,7 @@ export default function Home() {
       closed = true
       if (reconnectTimeout) clearTimeout(reconnectTimeout)
       if (flushInterval) clearInterval(flushInterval)
-      try { ws?.close() } catch {}
+      try { ws?.close() } catch { /* ignore */ }
     }
   }, [setLiveVessels])
 

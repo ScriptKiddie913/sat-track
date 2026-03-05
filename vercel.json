@@ -1,11 +1,25 @@
 {
   "framework": "nextjs",
   "buildCommand": "next build",
+  "functions": {
+    "app/api/ships/live/route.ts": { "maxDuration": 30 },
+    "app/api/ships/route.ts":      { "maxDuration": 15 },
+    "app/api/tle/route.ts":        { "maxDuration": 30 },
+    "app/api/quakes/route.ts":     { "maxDuration": 15 },
+    "app/api/events/route.ts":     { "maxDuration": 15 },
+    "app/api/satellites/route.ts": { "maxDuration": 15 }
+  },
   "headers": [
     {
-      "source": "/api/:path*",
+      "source": "/api/ships",
       "headers": [
-        { "key": "Cache-Control", "value": "s-maxage=3600, stale-while-revalidate" }
+        { "key": "Cache-Control", "value": "public, s-maxage=30, stale-while-revalidate=60" }
+      ]
+    },
+    {
+      "source": "/api/(tle|quakes|events|satellites)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, s-maxage=3600, stale-while-revalidate=86400" }
       ]
     }
   ]
