@@ -2,16 +2,17 @@
   "version": 2,
   "functions": {
     "api/*.js": {
-      "runtime": "@vercel/node@3.2.24",
+      "runtime": "nodejs22.x",
       "maxDuration": 30
     }
   },
-  "rewrites": [
-    { "source": "/api/catalog", "destination": "/api/catalog.js" },
-    { "source": "/api/positions", "destination": "/api/positions.js" },
-    { "source": "/api/ground-track", "destination": "/api/ground-track.js" },
-    { "source": "/api/passes", "destination": "/api/passes.js" },
-    { "source": "/", "destination": "/public/index.html" },
-    { "source": "/(.*)", "destination": "/public/index.html" }
+  "routes": [
+    { "src": "/", "dest": "/public/index.html" },
+    { "src": "/api/catalog", "dest": "/api/catalog.js" },
+    { "src": "/api/positions", "dest": "/api/positions.js" },
+    { "src": "/api/ground-track", "dest": "/api/ground-track.js" },
+    { "src": "/api/passes", "dest": "/api/passes.js" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/public/index.html" }
   ]
 }

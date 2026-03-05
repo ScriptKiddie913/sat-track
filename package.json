@@ -10,7 +10,7 @@
     "check": "node --check server.js && node --check lib/tracker.js && node --check api/catalog.js && node --check api/positions.js && node --check api/ground-track.js && node --check api/passes.js"
   },
   "engines": {
-    "node": "22.x"
+    "node": ">=20"
   },
   "dependencies": {
     "@turf/turf": "^7.2.0",
