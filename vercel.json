@@ -1,9 +1,18 @@
 {
   "version": 2,
   "functions": {
-    "api/satellites.js": {
+    "api/*.js": {
       "runtime": "nodejs22.x",
       "maxDuration": 30
     }
-  }
+  },
+  "routes": [
+    { "src": "/", "dest": "/public/index.html" },
+    { "src": "/api/catalog", "dest": "/api/catalog.js" },
+    { "src": "/api/positions", "dest": "/api/positions.js" },
+    { "src": "/api/ground-track", "dest": "/api/ground-track.js" },
+    { "src": "/api/passes", "dest": "/api/passes.js" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/public/index.html" }
+  ]
 }

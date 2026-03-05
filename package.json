@@ -1,10 +1,22 @@
 {
   "name": "sat-track",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Open satellite tracker using public TLE and SATCAT files",
+  "description": "Real-time live satellite tracker with SGP4, coverage, intersections, passes, timeline, WebSocket stream",
+  "main": "server.js",
   "scripts": {
-    "serve": "python -m http.server 8080",
-    "update-data": "python scripts/update_data.py"
+    "start": "node server.js",
+    "dev": "node server.js",
+    "check": "node --check server.js && node --check lib/tracker.js && node --check api/catalog.js && node --check api/positions.js && node --check api/ground-track.js && node --check api/passes.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@turf/turf": "^7.2.0",
+    "express": "^4.21.2",
+    "satellite.js": "^5.0.0",
+    "world-countries": "^5.0.0",
+    "ws": "^8.18.1"
   }
 }
