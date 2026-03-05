@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "functions": {
+    "api/*.js": {
+      "runtime": "@vercel/node@3.2.24",
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    { "source": "/api/catalog", "destination": "/api/catalog.js" },
+    { "source": "/api/positions", "destination": "/api/positions.js" },
+    { "source": "/api/ground-track", "destination": "/api/ground-track.js" },
+    { "source": "/api/passes", "destination": "/api/passes.js" },
+    { "source": "/", "destination": "/public/index.html" },
+    { "source": "/(.*)", "destination": "/public/index.html" }
+  ]
+}
