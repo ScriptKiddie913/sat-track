@@ -1,0 +1,10 @@
+{
+  "name": "sat-track",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Open satellite tracker using public TLE and SATCAT files",
+  "scripts": {
+    "serve": "python -m http.server 8080",
+    "update-data": "python scripts/update_data.py"
+  }
+}
