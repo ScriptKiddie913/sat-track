@@ -46,6 +46,7 @@ export default function Home() {
     sidebarCollapsed, toggleSidebar,
     setQuakes, setEvents,
     setLiveVessels, liveVessels,
+    setMultiSourceVessels, multiSourceVessels,
     quakes, events,
   } = useSatelliteStore()
 
@@ -89,31 +90,142 @@ export default function Home() {
     return () => clearInterval(iv)
   }, [setQuakes, setEvents])
 
-  // Fetch live AIS ships
+  // Live AIS ship tracking via AISStream WebSocket (client-side)
   useEffect(() => {
-    const fetchShips = () => {
-      fetch('/api/ships')
-        .then(r => r.json())
-        .then(d => {
-          if (d.ships && d.ships.length > 0) {
-            setLiveVessels(d.ships.map((s: any) => ({
-              id: s.mmsi || s.id || String(Math.random()),
-              name: s.name || 'IDENTIFYING...',
-              type: s.type || 'Unknown',
-              lat: Number(s.lat),
-              lng: Number(s.lng || s.lon),
-              course: Number(s.course || 0),
-              speed: Number(s.speed || 0),
-              flag: s.country || s.flag || '🏳️',
-            })))
-          }
-        })
-        .catch(() => {})
+    const shipMap = new Map<string, { id: string; name: string; type: string; lat: number; lng: number; course: number; speed: number; flag: string }>()
+    let ws: WebSocket | null = null
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
+    let flushInterval: ReturnType<typeof setInterval> | null = null
+    let closed = false
+
+    const MID: Record<string, string> = {
+      '201':'🇦🇱','205':'🇧🇪','209':'🇨🇾','211':'🇩🇪','219':'🇩🇰','220':'🇩🇰',
+      '224':'🇪🇸','225':'🇪🇸','226':'🇫🇷','227':'🇫🇷','228':'🇫🇷','230':'🇫🇮',
+      '232':'🇬🇧','233':'🇬🇧','234':'🇬🇧','235':'🇬🇧','237':'🇬🇷','238':'🇭🇷',
+      '240':'🇬🇷','244':'🇳🇱','245':'🇳🇱','247':'🇮🇹','248':'🇲🇹','249':'🇲🇹',
+      '255':'🇵🇹','256':'🇲🇹','257':'🇳🇴','258':'🇳🇴','259':'🇳🇴','261':'🇵🇱',
+      '263':'🇵🇹','265':'🇸🇪','266':'🇸🇪','271':'🇹🇷','272':'🇺🇦','273':'🇷🇺',
+      '301':'🇦🇮','303':'🇺🇸','308':'🇧🇸','311':'🇧🇸','316':'🇨🇦','338':'🇺🇸',
+      '345':'🇲🇽','351':'🇵🇦','352':'🇵🇦','353':'🇵🇦','354':'🇵🇦','355':'🇵🇦',
+      '356':'🇵🇦','357':'🇵🇦','366':'🇺🇸','367':'🇺🇸','368':'🇺🇸','369':'🇺🇸',
+      '370':'🇵🇦','371':'🇵🇦','372':'🇵🇦','373':'🇵🇦','374':'🇵🇦',
+      '401':'🇦🇫','403':'🇸🇦','405':'🇧🇩','412':'🇨🇳','413':'🇨🇳','414':'🇨🇳',
+      '416':'🇹🇼','422':'🇮🇷','425':'🇮🇶','428':'🇮🇱','431':'🇯🇵','432':'🇯🇵',
+      '440':'🇰🇷','441':'🇰🇷','447':'🇰🇼','461':'🇴🇲','466':'🇶🇦',
+      '470':'🇦🇪','471':'🇦🇪','477':'🇭🇰','503':'🇦🇺','512':'🇳🇿','525':'🇮🇩',
+      '533':'🇲🇾','538':'🇲🇭','548':'🇵🇭','559':'🇸🇬','563':'🇸🇬','564':'🇸🇬',
+      '565':'🇸🇬','567':'🇹🇭','574':'🇻🇳','601':'🇿🇦','603':'🇦🇴','605':'🇩🇿',
+      '622':'🇪🇬','636':'🇱🇷','637':'🇱🇷','657':'🇳🇬','701':'🇦🇷','710':'🇧🇷',
+      '725':'🇨🇱','730':'🇨🇴','760':'🇵🇪','770':'🇺🇾',
     }
-    fetchShips()
-    const iv = setInterval(fetchShips, 60 * 1000) // refresh every 60s
-    return () => clearInterval(iv)
+
+    function shipTypeName(t: number): string {
+      if (t === 30) return 'Fishing'
+      if (t === 31 || t === 32 || t === 52) return 'Tug'
+      if (t === 35 || t === 36 || t === 55) return 'Military'
+      if (t >= 40 && t <= 49) return 'High Speed'
+      if (t >= 60 && t <= 69) return 'Passenger'
+      if (t >= 70 && t <= 79) return 'Cargo'
+      if (t >= 80 && t <= 89) return 'Tanker'
+      if (t === 51) return 'SAR'
+      return 'Unknown'
+    }
+
+    function connect() {
+      if (closed) return
+      try {
+        ws = new WebSocket('wss://stream.aisstream.io/v0/stream')
+      } catch {
+        reconnectTimeout = setTimeout(connect, 10000)
+        return
+      }
+
+      ws.onopen = () => {
+        ws?.send(JSON.stringify({
+          APIKey: '8b9d8625829bd9614947be967c141babc5931e79',
+          BoundingBoxes: [[[-90, -180], [90, 180]]],
+          FilterMessageTypes: ['PositionReport', 'ShipStaticData'],
+        }))
+      }
+
+      ws.onmessage = (event: MessageEvent) => {
+        try {
+          const msg = JSON.parse(String(event.data))
+          const mmsi = String(msg?.MetaData?.MMSI || '')
+          if (!mmsi) return
+          const mt = msg.MessageType
+
+          if (mt === 'PositionReport') {
+            const pr = msg.Message.PositionReport
+            const lat = pr?.Latitude
+            const lng = pr?.Longitude
+            if (lat == null || lng == null || (lat === 0 && lng === 0)) return
+            const existing = shipMap.get(mmsi)
+            shipMap.set(mmsi, {
+              id: mmsi,
+              name: existing?.name || String(msg.MetaData?.ShipName || '').trim() || 'IDENTIFYING...',
+              type: existing?.type || 'Unknown',
+              lat,
+              lng,
+              course: pr.Cog || 0,
+              speed: pr.Sog || 0,
+              flag: existing?.flag || MID[mmsi.slice(0, 3)] || '🏳️',
+            })
+          } else if (mt === 'ShipStaticData') {
+            const sd = msg.Message.ShipStaticData
+            const existing = shipMap.get(mmsi)
+            if (existing) {
+              const newName = sd.Name?.trim()
+              if (newName) existing.name = newName
+              existing.type = shipTypeName(sd.Type || 0)
+            }
+          }
+        } catch { /* ignore parse errors */ }
+      }
+
+      ws.onerror = () => { try { ws?.close() } catch {} }
+      ws.onclose = () => {
+        if (!closed) {
+          reconnectTimeout = setTimeout(connect, 5000)
+        }
+      }
+    }
+
+    connect()
+
+    // Flush accumulated ships to store every 3 seconds
+    flushInterval = setInterval(() => {
+      if (shipMap.size > 0) {
+        const vessels = Array.from(shipMap.values())
+        setLiveVessels(vessels.length > 1000 ? vessels.slice(-1000) : vessels)
+      }
+    }, 3000)
+
+    return () => {
+      closed = true
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+      if (flushInterval) clearInterval(flushInterval)
+      try { ws?.close() } catch {}
+    }
   }, [setLiveVessels])
+
+  // Multi-source ship data (BarentsWatch, AISHub, ShipXplorer, ShipInfo)
+  useEffect(() => {
+    let cancelled = false
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/ships')
+        if (!res.ok) return
+        const data = await res.json()
+        if (!cancelled && data.ships && data.ships.length > 0) {
+          setMultiSourceVessels(data.ships)
+        }
+      } catch { /* API sources unavailable */ }
+    }
+    poll()
+    const iv = setInterval(poll, 30000)
+    return () => { cancelled = true; clearInterval(iv) }
+  }, [setMultiSourceVessels])
 
   const activeJammed = JAMMING_ZONES.filter(z => z.active).length
 
@@ -180,7 +292,7 @@ export default function Home() {
           <div className="flex items-center gap-2 bg-gray-900/80 border border-gray-700/40 rounded-lg px-3 py-1.5 font-mono text-[10px]">
             <span className="text-intel-cyan">{satellites.length} SAT</span>
             <span className="text-gray-700">|</span>
-            <span className="text-blue-400">{AIS_VESSELS.length + liveVessels.length} SHIP</span>
+            <span className="text-blue-400">{AIS_VESSELS.length + liveVessels.length + multiSourceVessels.length} SHIP</span>
             <span className="text-gray-700">|</span>
             <span className="text-red-400">{quakes.length} QUAKE</span>
             <span className="text-gray-700">|</span>

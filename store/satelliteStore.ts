@@ -25,6 +25,7 @@ interface SatelliteStore {
   quakes: Quake[]
   events: EONETEvent[]
   liveVessels: AISVessel[]
+  multiSourceVessels: AISVessel[]
 
   setSatellites: (sats: TLESatellite[]) => void
   setCategory: (cat: SatCategory) => void
@@ -51,6 +52,7 @@ interface SatelliteStore {
   setQuakes: (q: Quake[]) => void
   setEvents: (e: EONETEvent[]) => void
   setLiveVessels: (v: AISVessel[]) => void
+  setMultiSourceVessels: (v: AISVessel[]) => void
 }
 
 export const useSatelliteStore = create<SatelliteStore>()((set) => ({
@@ -77,6 +79,7 @@ export const useSatelliteStore = create<SatelliteStore>()((set) => ({
   quakes: [] as Quake[],
   events: [] as EONETEvent[],
   liveVessels: [] as AISVessel[],
+  multiSourceVessels: [] as AISVessel[],
 
   setSatellites: (sats: TLESatellite[]) => set({ satellites: sats }),
   setCategory: (cat: SatCategory) => set({ category: cat }),
@@ -107,4 +110,5 @@ export const useSatelliteStore = create<SatelliteStore>()((set) => ({
   setQuakes: (q: Quake[]) => set({ quakes: q }),
   setEvents: (e: EONETEvent[]) => set({ events: e }),
   setLiveVessels: (v: AISVessel[]) => set({ liveVessels: v }),
+  setMultiSourceVessels: (v: AISVessel[]) => set({ multiSourceVessels: v }),
 }))

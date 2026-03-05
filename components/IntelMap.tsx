@@ -130,6 +130,74 @@ function createEventIcon(cat: string): L.DivIcon {
   })
 }
 
+// ── Ship emoji marker — ship-shaped SVG hull + type emoji badge ──
+const _shipEmojiCache = new Map<string, L.DivIcon>()
+function createShipEmojiMarker(type: string, course?: number): L.DivIcon {
+  const tl = (type || '').toLowerCase()
+  const rot = Math.round((course || 0) / 5) * 5
+  const ck = `ship_${tl}_${rot}`
+  if (_shipEmojiCache.has(ck)) return _shipEmojiCache.get(ck)!
+
+  let emoji: string, color: string, sz: number, hull: string
+  switch (tl) {
+    case 'warship':
+    case 'military':
+      emoji = '\u2694\uFE0F'; color = '#ff1744'; sz = 38
+      hull = `<path d="M20,2 L28,10 L29,16 L28,30 L24,37 L16,37 L12,30 L11,16 L12,10 Z" fill="${color}" opacity=".9" stroke="rgba(255,255,255,.45)" stroke-width=".7"/><rect x="15" y="10" width="10" height="6" rx="1.5" fill="rgba(0,0,0,.35)" stroke="rgba(255,255,255,.15)" stroke-width=".4"/><rect x="17" y="18" width="6" height="4" rx=".8" fill="rgba(0,0,0,.3)"/><line x1="20" y1="3" x2="20" y2="10" stroke="#fff" stroke-width="1.2" opacity=".65"/><circle cx="20" cy="3" r="1.5" fill="#fff" opacity=".5"/><line x1="12" y1="22" x2="7" y2="19" stroke="${color}" stroke-width="1.5" opacity=".7"/><line x1="28" y1="22" x2="33" y2="19" stroke="${color}" stroke-width="1.5" opacity=".7"/>`
+      break
+    case 'cargo':
+      emoji = '\uD83D\uDCE6'; color = '#42a5f5'; sz = 32
+      hull = `<path d="M20,3 L27,10 L27,30 L23,36 L17,36 L13,30 L13,10 Z" fill="${color}" opacity=".9" stroke="rgba(255,255,255,.3)" stroke-width=".6"/><rect x="15" y="12" width="10" height="6" rx="1" fill="rgba(0,0,0,.25)" stroke="rgba(255,255,255,.1)" stroke-width=".3"/><rect x="15" y="20" width="10" height="6" rx="1" fill="rgba(0,0,0,.2)" stroke="rgba(255,255,255,.1)" stroke-width=".3"/><line x1="20" y1="12" x2="20" y2="26" stroke="rgba(255,255,255,.12)" stroke-width=".4"/><line x1="20" y1="3" x2="20" y2="8" stroke="rgba(255,255,255,.4)" stroke-width=".8"/>`
+      break
+    case 'tanker':
+      emoji = '\uD83D\uDEE2\uFE0F'; color = '#ff7043'; sz = 32
+      hull = `<ellipse cx="20" cy="20" rx="8" ry="16" fill="${color}" opacity=".9"/><ellipse cx="20" cy="20" rx="6" ry="12" fill="rgba(0,0,0,.15)"/><line x1="20" y1="5" x2="20" y2="35" stroke="rgba(255,255,255,.1)" stroke-width=".5"/><rect x="17" y="6" width="6" height="4" rx="1" fill="${color}" opacity=".7"/>`
+      break
+    case 'passenger':
+      emoji = '\uD83D\uDEF3\uFE0F'; color = '#66bb6a'; sz = 34
+      hull = `<rect x="12" y="5" width="16" height="30" rx="5" fill="${color}" opacity=".9"/><rect x="14" y="8" width="12" height="3.5" rx="1" fill="rgba(255,255,255,.25)"/><rect x="14" y="13" width="12" height="3.5" rx="1" fill="rgba(255,255,255,.2)"/><rect x="14" y="18" width="12" height="3.5" rx="1" fill="rgba(255,255,255,.15)"/><rect x="16" y="24" width="8" height="5" rx="1" fill="rgba(0,0,0,.2)"/><circle cx="20" cy="6" r="1.2" fill="rgba(255,255,255,.4)"/>`
+      break
+    case 'fishing':
+      emoji = '\uD83C\uDFA3'; color = '#fdd835'; sz = 26
+      hull = `<path d="M20,4 L26,26 L20,22 L14,26 Z" fill="${color}" opacity=".9"/><line x1="20" y1="1" x2="20" y2="12" stroke="${color}" stroke-width="1.5" opacity=".8"/><line x1="20" y1="4" x2="15" y2="9" stroke="${color}" stroke-width=".8" opacity=".5"/><line x1="20" y1="5" x2="26" y2="10" stroke="${color}" stroke-width=".8" opacity=".5"/><circle cx="20" cy="1" r="1" fill="${color}" opacity=".6"/>`
+      break
+    case 'tug':
+      emoji = '\u2693'; color = '#ab47bc'; sz = 28
+      hull = `<rect x="13" y="10" width="14" height="18" rx="4" fill="${color}" opacity=".9"/><rect x="15" y="5" width="10" height="7" rx="2.5" fill="${color}" opacity=".75"/><rect x="17" y="2" width="6" height="4" rx="1.5" fill="${color}" opacity=".6"/><line x1="13" y1="24" x2="9" y2="27" stroke="${color}" stroke-width="1.5" opacity=".5"/><line x1="27" y1="24" x2="31" y2="27" stroke="${color}" stroke-width="1.5" opacity=".5"/>`
+      break
+    case 'research':
+      emoji = '\uD83D\uDD2C'; color = '#00bcd4'; sz = 30
+      hull = `<path d="M20,4 L26,10 L26,28 L23,34 L17,34 L14,28 L14,10 Z" fill="${color}" opacity=".9"/><circle cx="20" cy="15" r="4" fill="rgba(255,255,255,.2)" stroke="rgba(255,255,255,.3)" stroke-width=".5"/><line x1="20" y1="2" x2="20" y2="9" stroke="#fff" stroke-width=".8" opacity=".5"/><circle cx="20" cy="2" r="1" fill="#fff" opacity=".5"/>`
+      break
+    case 'high speed':
+      emoji = '\u26A1'; color = '#e91e63'; sz = 30
+      hull = `<path d="M20,1 L28,12 L26,33 L20,37 L14,33 L12,12 Z" fill="${color}" opacity=".9"/><path d="M20,5 L25,12 L24,26 L20,30 L16,26 L15,12 Z" fill="rgba(255,255,255,.1)"/><line x1="12" y1="16" x2="8" y2="13" stroke="${color}" stroke-width="1" opacity=".6"/><line x1="28" y1="16" x2="32" y2="13" stroke="${color}" stroke-width="1" opacity=".6"/>`
+      break
+    case 'sar':
+      emoji = '\uD83C\uDD98'; color = '#76ff03'; sz = 30
+      hull = `<path d="M20,3 L27,10 L27,28 L23,34 L17,34 L13,28 L13,10 Z" fill="${color}" opacity=".9"/><path d="M15,14 L20,9 L25,14 L20,19 Z" fill="rgba(255,255,255,.35)" stroke="#fff" stroke-width=".5"/><line x1="20" y1="3" x2="20" y2="9" stroke="#fff" stroke-width="1" opacity=".6"/>`
+      break
+    case 'pilot':
+      emoji = '\uD83E\uDDED'; color = '#ff9800'; sz = 26
+      hull = `<path d="M20,4 L26,12 L25,30 L20,35 L15,30 L14,12 Z" fill="${color}" opacity=".85"/><circle cx="20" cy="17" r="3.5" fill="rgba(255,255,255,.2)" stroke="rgba(255,255,255,.2)" stroke-width=".5"/>`
+      break
+    default:
+      emoji = '\uD83D\uDEA2'; color = '#78909c'; sz = 26
+      hull = `<path d="M20,4 L27,14 L25,32 L20,36 L15,32 L13,14 Z" fill="${color}" opacity=".8"/><circle cx="20" cy="18" r="2.5" fill="rgba(255,255,255,.15)"/>`
+      break
+  }
+
+  const isMil = tl === 'warship' || tl === 'military'
+  const icon = L.divIcon({
+    className: 'ship-emoji-marker',
+    iconSize: [sz, sz],
+    iconAnchor: [sz / 2, sz / 2],
+    html: `<div style="position:relative;width:${sz}px;height:${sz}px;"><svg viewBox="0 0 40 40" width="${sz}" height="${sz}" style="transform:rotate(${rot}deg);filter:drop-shadow(0 0 ${isMil ? 8 : 5}px ${color}) drop-shadow(0 0 2px rgba(0,0,0,.9))">${hull}</svg><span style="position:absolute;top:-7px;right:-7px;font-size:13px;line-height:1;filter:drop-shadow(0 0 3px rgba(0,0,0,.95));z-index:2">${emoji}</span></div>`,
+  })
+  _shipEmojiCache.set(ck, icon)
+  return icon
+}
+
 export default function IntelMap() {
   const mapRef = useRef<L.Map | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -166,6 +234,7 @@ export default function IntelMap() {
     quakes,
     events,
     liveVessels,
+    multiSourceVessels,
   } = useSatelliteStore()
 
   // Initialize map
@@ -363,9 +432,19 @@ export default function IntelMap() {
 
     const bounds = mapRef.current.getBounds().pad(0.3)
 
-    // Merge static vessels from intel-data + live vessels from API
+    // Merge static vessels + multi-source API vessels + live WebSocket vessels
     const allVessels = [
       ...AIS_VESSELS,
+      ...multiSourceVessels.map((v: AISVessel) => ({
+        id: v.id,
+        name: v.name,
+        type: v.type,
+        lat: v.lat,
+        lng: v.lng,
+        course: v.course,
+        speed: v.speed,
+        flag: v.flag,
+      })),
       ...liveVessels.map((v: AISVessel) => ({
         id: v.id,
         name: v.name,
@@ -391,13 +470,13 @@ export default function IntelMap() {
     deduped.forEach((vessel) => {
       if (!bounds.contains([vessel.lat, vessel.lng])) return
       const marker = L.marker([vessel.lat, vessel.lng], {
-        icon: createVesselIcon(vessel.type, vessel.course),
+        icon: createShipEmojiMarker(vessel.type, vessel.course),
       }).addTo(mapRef.current!)
 
       const tc: Record<string, string> = {
-        warship: '#ff1744', cargo: '#42a5f5', tanker: '#ff7043', passenger: '#66bb6a',
+        warship: '#ff1744', military: '#ff1744', cargo: '#42a5f5', tanker: '#ff7043', passenger: '#66bb6a',
         fishing: '#fdd835', tug: '#ab47bc', research: '#00bcd4', 'high speed': '#e91e63',
-        sar: '#76ff03', unknown: '#78909c',
+        sar: '#76ff03', pilot: '#ff9800', unknown: '#78909c',
       }
       const typeColor = tc[(vessel.type || '').toLowerCase()] || '#78909c'
 
@@ -416,7 +495,7 @@ export default function IntelMap() {
       )
       vesselRef.current.set(vessel.id, marker)
     })
-  }, [showVessels, liveVessels])
+  }, [showVessels, liveVessels, multiSourceVessels])
 
   // Ground Stations
   useEffect(() => {
