@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Open Satellite Tracker</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <h1>Open Satellite Tracker</h1>
+    <p>Live positions propagated from public TLE files (no proprietary API).</p>
+    <div id="stats"></div>
+  </header>
+
+  <main>
+    <section class="map-panel">
+      <canvas id="map" width="1400" height="700"></canvas>
+      <div class="legend">Click a point to inspect a satellite.</div>
+    </section>
+
+    <aside>
+      <h2>Satellite Details</h2>
+      <div id="details">Click any satellite point on the map.</div>
+
+      <h2>Catalog</h2>
+      <input id="search" type="search" placeholder="Filter by name, country, type..." />
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Country</th><th>Type</th><th>Orbit</th></tr>
+          </thead>
+          <tbody id="catalog-body"></tbody>
+        </table>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    Data source targets: CelesTrak active TLE + CelesTrak SATCAT (downloaded into local <code>data/</code> files).
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
