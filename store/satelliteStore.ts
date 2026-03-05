@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { TLESatellite, SatCategory } from '@/lib/types'
+import type { TLESatellite, SatCategory, Quake, EONETEvent } from '@/lib/types'
 
 interface SatelliteStore {
   satellites: TLESatellite[]
@@ -12,10 +12,18 @@ interface SatelliteStore {
   showJamming: boolean
   showFlights: boolean
   showVessels: boolean
+  showSatellites: boolean
+  showStations: boolean
+  showQuakes: boolean
+  showEvents: boolean
   activeImageryLayer: string | null
-  timelineOffset: number // minutes offset from now (-60 to +60)
+  godsEyeMode: string | null
+  timelineOffset: number
   isPlaying: boolean
   countryCounts: Record<string, number>
+  sidebarCollapsed: boolean
+  quakes: Quake[]
+  events: EONETEvent[]
 
   setSatellites: (sats: TLESatellite[]) => void
   setCategory: (cat: SatCategory) => void
@@ -28,15 +36,24 @@ interface SatelliteStore {
   toggleJamming: () => void
   toggleFlights: () => void
   toggleVessels: () => void
+  toggleSatellites: () => void
+  toggleStations: () => void
+  toggleQuakes: () => void
+  toggleEvents: () => void
   setImageryLayer: (id: string | null) => void
+  setGodsEyeMode: (id: string | null) => void
   setTimelineOffset: (offset: number) => void
   setIsPlaying: (p: boolean) => void
   setCountryCounts: (c: Record<string, number>) => void
+  toggleSidebar: () => void
+  setSidebarCollapsed: (v: boolean) => void
+  setQuakes: (q: Quake[]) => void
+  setEvents: (e: EONETEvent[]) => void
 }
 
-export const useSatelliteStore = create<SatelliteStore>((set) => ({
+export const useSatelliteStore = create<SatelliteStore>()((set) => ({
   satellites: [],
-  category: 'active',
+  category: 'active' as SatCategory,
   lockedId: null,
   searchQuery: '',
   countryFilter: null,
@@ -45,27 +62,45 @@ export const useSatelliteStore = create<SatelliteStore>((set) => ({
   showJamming: true,
   showFlights: true,
   showVessels: true,
+  showSatellites: true,
+  showStations: true,
+  showQuakes: true,
+  showEvents: true,
   activeImageryLayer: null,
+  godsEyeMode: null,
   timelineOffset: 0,
   isPlaying: false,
-  countryCounts: {},
+  countryCounts: {} as Record<string, number>,
+  sidebarCollapsed: false,
+  quakes: [] as Quake[],
+  events: [] as EONETEvent[],
 
-  setSatellites: (sats) => set({ satellites: sats }),
-  setCategory: (cat) => set({ category: cat }),
-  setLockedId: (id) => set({ lockedId: id }),
-  toggleLock: (id) =>
+  setSatellites: (sats: TLESatellite[]) => set({ satellites: sats }),
+  setCategory: (cat: SatCategory) => set({ category: cat }),
+  setLockedId: (id: string | null) => set({ lockedId: id }),
+  toggleLock: (id: string) =>
     set((s) => ({ lockedId: s.lockedId === id ? null : id })),
-  setSearch: (q) => set({ searchQuery: q }),
-  setCountryFilter: (code) =>
+  setSearch: (q: string) => set({ searchQuery: q }),
+  setCountryFilter: (code: string | null) =>
     set((s) => ({ countryFilter: s.countryFilter === code ? null : code })),
   toggleOrbits: () => set((s) => ({ showOrbits: !s.showOrbits })),
   toggleCoverage: () => set((s) => ({ showCoverage: !s.showCoverage })),
   toggleJamming: () => set((s) => ({ showJamming: !s.showJamming })),
   toggleFlights: () => set((s) => ({ showFlights: !s.showFlights })),
   toggleVessels: () => set((s) => ({ showVessels: !s.showVessels })),
-  setImageryLayer: (id) =>
+  toggleSatellites: () => set((s) => ({ showSatellites: !s.showSatellites })),
+  toggleStations: () => set((s) => ({ showStations: !s.showStations })),
+  toggleQuakes: () => set((s) => ({ showQuakes: !s.showQuakes })),
+  toggleEvents: () => set((s) => ({ showEvents: !s.showEvents })),
+  setImageryLayer: (id: string | null) =>
     set((s) => ({ activeImageryLayer: s.activeImageryLayer === id ? null : id })),
-  setTimelineOffset: (offset) => set({ timelineOffset: offset }),
-  setIsPlaying: (p) => set({ isPlaying: p }),
-  setCountryCounts: (c) => set({ countryCounts: c }),
+  setGodsEyeMode: (id: string | null) =>
+    set((s) => ({ godsEyeMode: s.godsEyeMode === id ? null : id })),
+  setTimelineOffset: (offset: number) => set({ timelineOffset: offset }),
+  setIsPlaying: (p: boolean) => set({ isPlaying: p }),
+  setCountryCounts: (c: Record<string, number>) => set({ countryCounts: c }),
+  toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+  setSidebarCollapsed: (v: boolean) => set({ sidebarCollapsed: v }),
+  setQuakes: (q: Quake[]) => set({ quakes: q }),
+  setEvents: (e: EONETEvent[]) => set({ events: e }),
 }))

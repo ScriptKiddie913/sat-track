@@ -36,6 +36,7 @@ export interface JammingZone {
   type: string
   severity: 'high' | 'medium' | 'low'
   active: boolean
+  source?: string
 }
 
 export interface GIBSLayer {
@@ -47,4 +48,63 @@ export interface GIBSLayer {
   maxZoom: number
 }
 
-export type SatCategory = 'active' | 'starlink' | 'stations' | 'weather' | 'gps' | 'military' | 'science' | 'resource'
+export interface AISVessel {
+  id: string
+  name: string
+  type: string
+  lat: number
+  lng: number
+  course: number
+  speed: number
+  flag: string
+}
+
+export interface ADSBFlight {
+  id: string
+  callsign: string
+  type: string
+  path: [number, number][]
+  diverted: boolean
+}
+
+export interface GroundStation {
+  name: string
+  lat: number
+  lng: number
+  type: 'launch' | 'sigint' | 'radar' | 'dsn'
+  flag: string
+}
+
+export interface Quake {
+  id: string
+  mag: number
+  place: string
+  time: number
+  lng: number
+  lat: number
+  depth: number
+  tsunami?: number
+}
+
+export interface EONETEvent {
+  id: string
+  title: string
+  category: string
+  lng: number
+  lat: number
+  date: string | null
+}
+
+export interface GodsEyeMode {
+  id: string
+  label: string
+  desc: string
+}
+
+export type SatCategory =
+  | 'active' | 'stations' | 'starlink' | 'oneweb' | 'iridium' | 'globalstar'
+  | 'orbcomm' | 'weather' | 'noaa' | 'goes' | 'gps' | 'glonass' | 'galileo'
+  | 'beidou' | 'gnss' | 'military' | 'science' | 'resource' | 'geo' | 'amateur'
+  | 'cubesat' | 'planet' | 'spire' | 'radar' | 'intelsat' | 'ses' | 'telesat'
+  | 'tdrss' | 'sarsat' | 'molniya' | 'education' | 'engineering' | 'geodetic'
+  | 'visual' | 'tle-new' | 'debris' | 'argos' | 'dmc' | 'satnogs' | 'x-comm'

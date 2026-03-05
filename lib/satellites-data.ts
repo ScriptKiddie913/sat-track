@@ -1,21 +1,62 @@
 import type { SatCategory } from './types'
 
+const BASE = 'https://celestrak.org/NORAD/elements/gp.php?GROUP='
+const FMT = '&FORMAT=tle'
+
 export const TLE_URLS: Record<SatCategory, string> = {
-  active:
-    'https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=tle',
-  starlink:
-    'https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&FORMAT=tle',
-  stations:
-    'https://celestrak.org/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle',
-  weather:
-    'https://celestrak.org/NORAD/elements/gp.php?GROUP=weather&FORMAT=tle',
-  gps: 'https://celestrak.org/NORAD/elements/gp.php?GROUP=gps-ops&FORMAT=tle',
-  military:
-    'https://celestrak.org/NORAD/elements/gp.php?GROUP=military&FORMAT=tle',
-  science:
-    'https://celestrak.org/NORAD/elements/gp.php?GROUP=science&FORMAT=tle',
-  resource:
-    'https://celestrak.org/NORAD/elements/gp.php?GROUP=resource&FORMAT=tle',
+  active: `${BASE}active${FMT}`,
+  stations: `${BASE}stations${FMT}`,
+  starlink: `${BASE}starlink${FMT}`,
+  oneweb: `${BASE}oneweb${FMT}`,
+  iridium: `${BASE}iridium${FMT}`,
+  globalstar: `${BASE}globalstar${FMT}`,
+  orbcomm: `${BASE}orbcomm${FMT}`,
+  weather: `${BASE}weather${FMT}`,
+  noaa: `${BASE}noaa${FMT}`,
+  goes: `${BASE}goes${FMT}`,
+  gps: `${BASE}gps-ops${FMT}`,
+  glonass: `${BASE}glo-ops${FMT}`,
+  galileo: `${BASE}galileo${FMT}`,
+  beidou: `${BASE}beidou${FMT}`,
+  gnss: `${BASE}gnss${FMT}`,
+  military: `${BASE}military${FMT}`,
+  science: `${BASE}science${FMT}`,
+  resource: `${BASE}resource${FMT}`,
+  geo: `${BASE}geo${FMT}`,
+  amateur: `${BASE}amateur${FMT}`,
+  cubesat: `${BASE}cubesat${FMT}`,
+  planet: `${BASE}planet${FMT}`,
+  spire: `${BASE}spire${FMT}`,
+  radar: `${BASE}radar${FMT}`,
+  intelsat: `${BASE}intelsat${FMT}`,
+  ses: `${BASE}ses${FMT}`,
+  telesat: `${BASE}telesat${FMT}`,
+  tdrss: `${BASE}tdrss${FMT}`,
+  sarsat: `${BASE}sarsat${FMT}`,
+  molniya: `${BASE}molniya${FMT}`,
+  education: `${BASE}education${FMT}`,
+  engineering: `${BASE}engineering${FMT}`,
+  geodetic: `${BASE}geodetic${FMT}`,
+  visual: `${BASE}visual${FMT}`,
+  'tle-new': `${BASE}tle-new${FMT}`,
+  debris: `${BASE}cosmos-2251-debris${FMT}`,
+  argos: `${BASE}argos${FMT}`,
+  dmc: `${BASE}dmc${FMT}`,
+  satnogs: `${BASE}satnogs${FMT}`,
+  'x-comm': `${BASE}x-comm${FMT}`,
+}
+
+export const CATEGORY_LABELS: Record<SatCategory, string> = {
+  active: 'ALL', stations: 'STATIONS', starlink: 'STARLINK', oneweb: 'ONEWEB',
+  iridium: 'IRIDIUM', globalstar: 'GLOBALSTAR', orbcomm: 'ORBCOMM', weather: 'WEATHER',
+  noaa: 'NOAA', goes: 'GOES', gps: 'GPS', glonass: 'GLONASS', galileo: 'GALILEO',
+  beidou: 'BEIDOU', gnss: 'GNSS ALL', military: 'MILITARY', science: 'SCIENCE',
+  resource: 'EARTH OBS', geo: 'GEO BELT', amateur: 'AMATEUR', cubesat: 'CUBESAT',
+  planet: 'PLANET', spire: 'SPIRE', radar: 'RADAR', intelsat: 'INTELSAT', ses: 'SES',
+  telesat: 'TELESAT', tdrss: 'TDRSS', sarsat: 'SARSAT', molniya: 'MOLNIYA',
+  education: 'EDU', engineering: 'ENGR', geodetic: 'GEODETIC', visual: 'VISUAL',
+  'tle-new': 'NEW LAUNCHES', debris: 'DEBRIS', argos: 'ARGOS', dmc: 'DMC',
+  satnogs: 'SATNOGS', 'x-comm': 'X-COMM',
 }
 
 // Curated multi-nation satellites — always available as fallback
