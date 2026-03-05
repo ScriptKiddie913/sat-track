@@ -1,5 +1,0 @@
-[
-  {"name":"ISS (ZARYA)","norad":25544,"epoch":"26063.54791435","inc":51.6311,"raan":130.5360,"ecc":0.0003908,"argPerigee":281.2927,"meanAnomaly":209.8958,"meanMotion":15.49103876,"country":"ISS","type":"PAYLOAD","orbitClass":"LEO"},
-  {"name":"NOAA 15","norad":25338,"epoch":"26063.42653365","inc":98.5431,"raan":72.5851,"ecc":0.0010675,"argPerigee":226.1943,"meanAnomaly":133.7717,"meanMotion":14.25904958396144,"country":"US","type":"PAYLOAD","orbitClass":"LEO"},
-  {"name":"SES-1","norad":36516,"epoch":"26063.52320165","inc":0.0140,"raan":71.8817,"ecc":0.0002589,"argPerigee":148.9458,"meanAnomaly":272.7320,"meanMotion":1.00271410,"country":"LUXE","type":"PAYLOAD","orbitClass":"GEO"}
-]
