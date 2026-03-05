@@ -208,7 +208,6 @@ export default function IntelMap() {
   const jammingPulseRef = useRef<L.Circle[]>([])
   const flightRef = useRef<Map<string, { marker: L.Marker; line: L.Polyline }>>(new Map())
   const vesselRef = useRef<Map<string, L.Marker>>(new Map())
-  const vesselDataRef = useRef<Map<string, AISVessel>>(new Map())
   const stationRef = useRef<L.Marker[]>([])
   const quakeRef = useRef<L.Marker[]>([])
   const eventRef = useRef<L.Marker[]>([])
@@ -424,95 +423,77 @@ export default function IntelMap() {
     })
   }, [showFlights])
 
-  // AIS Vessels — incremental smooth updates (no clear-and-rebuild flicker)
+  // AIS Vessels — static + live, viewport culled
   useEffect(() => {
     if (!mapRef.current) return
+    vesselRef.current.forEach((m) => mapRef.current!.removeLayer(m))
+    vesselRef.current.clear()
+    if (!showVessels) return
 
-    if (!showVessels) {
-      vesselRef.current.forEach((m) => mapRef.current!.removeLayer(m))
-      vesselRef.current.clear()
-      vesselDataRef.current.clear()
-      return
-    }
+    const bounds = mapRef.current.getBounds().pad(0.3)
 
-    const map = mapRef.current
-    const bounds = map.getBounds().pad(0.5)
+    // Merge static vessels + multi-source API vessels + live WebSocket vessels
+    const allVessels = [
+      ...AIS_VESSELS,
+      ...multiSourceVessels.map((v: AISVessel) => ({
+        id: v.id,
+        name: v.name,
+        type: v.type,
+        lat: v.lat,
+        lng: v.lng,
+        course: v.course,
+        speed: v.speed,
+        flag: v.flag,
+      })),
+      ...liveVessels.map((v: AISVessel) => ({
+        id: v.id,
+        name: v.name,
+        type: v.type,
+        lat: v.lat,
+        lng: v.lng,
+        course: v.course,
+        speed: v.speed,
+        flag: v.flag,
+      })),
+    ]
 
-    const tc: Record<string, string> = {
-      warship: '#ff1744', military: '#ff1744', cargo: '#42a5f5', tanker: '#ff7043',
-      passenger: '#66bb6a', fishing: '#fdd835', tug: '#ab47bc', research: '#00bcd4',
-      'high speed': '#e91e63', sar: '#76ff03', pilot: '#ff9800', unknown: '#78909c',
-    }
-
-    // Build deduplicated vessel map — live AIS takes priority over static data
-    const newVesselMap = new Map<string, AISVessel>()
-    for (const v of (AIS_VESSELS as AISVessel[])) newVesselMap.set(v.id, v)
-    for (const v of multiSourceVessels) newVesselMap.set(v.id, v)
-    for (const v of liveVessels) newVesselMap.set(v.id, v)
-
-    // Remove markers for vessels that left the viewport or are no longer in data
-    Array.from(vesselRef.current.entries()).forEach(([id, marker]) => {
-      const vessel = newVesselMap.get(id)
-      if (!vessel || !bounds.contains([vessel.lat, vessel.lng])) {
-        map.removeLayer(marker)
-        vesselRef.current.delete(id)
+    // Deduplicate by id (live takes priority for same id)
+    const seen = new Set<string>()
+    const deduped = []
+    for (let i = allVessels.length - 1; i >= 0; i--) {
+      if (!seen.has(allVessels[i].id)) {
+        seen.add(allVessels[i].id)
+        deduped.push(allVessels[i])
       }
-    })
+    }
 
-    // Incrementally update existing markers or add new ones — no DOM rebuild
-    newVesselMap.forEach((vessel, id) => {
+    deduped.forEach((vessel) => {
       if (!bounds.contains([vessel.lat, vessel.lng])) return
+      const marker = L.marker([vessel.lat, vessel.lng], {
+        icon: createShipEmojiMarker(vessel.type, vessel.course),
+      }).addTo(mapRef.current!)
 
-      const existing = vesselRef.current.get(id)
-      if (existing) {
-        // Smooth position update: setLatLng avoids destroying/recreating DOM element
-        existing.setLatLng([vessel.lat, vessel.lng])
-        const prev = vesselDataRef.current.get(id)
-        // Only rebuild icon when type, name, or course changes significantly
-        if (
-          !prev ||
-          prev.type !== vessel.type ||
-          prev.name !== vessel.name ||
-          Math.abs((prev.course || 0) - (vessel.course || 0)) >= 5
-        ) {
-          existing.setIcon(createShipEmojiMarker(vessel.type, vessel.course))
-          const typeColor = tc[(vessel.type || '').toLowerCase()] || '#78909c'
-          existing.bindPopup(
-            `<div style="font-family:monospace;font-size:11px;color:#fff;background:#0d0d0d;padding:10px;border-radius:6px;border:1px solid ${typeColor}33">
-              <div style="border-left:3px solid ${typeColor};padding-left:8px;margin-bottom:4px">
-                <span style="color:${typeColor};font-weight:bold;font-size:12px">${vessel.flag} ${vessel.name}</span>
-              </div>
-              <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin-top:4px">
-                <span style="color:#666">TYPE</span><span style="color:${typeColor}">${(vessel.type || 'Unknown').toUpperCase()}</span>
-                <span style="color:#666">HDG</span><span>${vessel.course}°</span>
-                <span style="color:#666">SPD</span><span>${vessel.speed} kn</span>
-              </div>
-            </div>`,
-            { className: 'intel-popup' }
-          )
-        }
-      } else {
-        // Create new marker for newly visible vessel
-        const typeColor = tc[(vessel.type || '').toLowerCase()] || '#78909c'
-        const marker = L.marker([vessel.lat, vessel.lng], {
-          icon: createShipEmojiMarker(vessel.type, vessel.course),
-        }).addTo(map)
-        marker.bindPopup(
-          `<div style="font-family:monospace;font-size:11px;color:#fff;background:#0d0d0d;padding:10px;border-radius:6px;border:1px solid ${typeColor}33">
-            <div style="border-left:3px solid ${typeColor};padding-left:8px;margin-bottom:4px">
-              <span style="color:${typeColor};font-weight:bold;font-size:12px">${vessel.flag} ${vessel.name}</span>
-            </div>
-            <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin-top:4px">
-              <span style="color:#666">TYPE</span><span style="color:${typeColor}">${(vessel.type || 'Unknown').toUpperCase()}</span>
-              <span style="color:#666">HDG</span><span>${vessel.course}°</span>
-              <span style="color:#666">SPD</span><span>${vessel.speed} kn</span>
-            </div>
-          </div>`,
-          { className: 'intel-popup' }
-        )
-        vesselRef.current.set(id, marker)
+      const tc: Record<string, string> = {
+        warship: '#ff1744', military: '#ff1744', cargo: '#42a5f5', tanker: '#ff7043', passenger: '#66bb6a',
+        fishing: '#fdd835', tug: '#ab47bc', research: '#00bcd4', 'high speed': '#e91e63',
+        sar: '#76ff03', pilot: '#ff9800', unknown: '#78909c',
       }
-      vesselDataRef.current.set(id, vessel)
+      const typeColor = tc[(vessel.type || '').toLowerCase()] || '#78909c'
+
+      marker.bindPopup(
+        `<div style="font-family:monospace;font-size:11px;color:#fff;background:#0d0d0d;padding:10px;border-radius:6px;border:1px solid ${typeColor}33">
+          <div style="border-left:3px solid ${typeColor};padding-left:8px;margin-bottom:4px">
+            <span style="color:${typeColor};font-weight:bold;font-size:12px">${vessel.flag} ${vessel.name}</span>
+          </div>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:2px 8px;margin-top:4px">
+            <span style="color:#666">TYPE</span><span style="color:${typeColor}">${(vessel.type || 'Unknown').toUpperCase()}</span>
+            <span style="color:#666">HDG</span><span>${vessel.course}°</span>
+            <span style="color:#666">SPD</span><span>${vessel.speed} kn</span>
+          </div>
+        </div>`,
+        { className: 'intel-popup' }
+      )
+      vesselRef.current.set(vessel.id, marker)
     })
   }, [showVessels, liveVessels, multiSourceVessels])
 

@@ -221,6 +221,34 @@ async function fetchShipInfo(): Promise<ShipRecord[]> {
 
 /* ── Aggregate all sources in parallel ── */
 export async function GET() {
+  // When PYTHON_BACKEND_URL is set (local dev with uvicorn), proxy directly
+  // to the Python server's ship registry which has live AISStream data.
+  const pythonBackend = process.env.PYTHON_BACKEND_URL
+  if (pythonBackend) {
+    try {
+      const res = await fetchWithTimeout(`${pythonBackend}/api/ships`, {}, 8000)
+      if (res.ok) {
+        const data = await res.json()
+        // Normalize Python server format to our ShipRecord format
+        const ships: ShipRecord[] = (data.ships || []).map((s: any) => ({
+          id: String(s.mmsi || s.id || ''),
+          name: String(s.name || 'IDENTIFYING...').trim(),
+          type: String(s.type || 'Unknown'),
+          lat: Number(s.lat),
+          lng: Number(s.lon ?? s.lng),
+          course: Number(s.course ?? s.cog ?? 0),
+          speed: Number(s.speed ?? s.sog ?? 0),
+          flag: mmsiFlag(String(s.mmsi || s.id || '')),
+          source: String(s.source || 'Python'),
+        })).filter((s: ShipRecord) => s.id && !isNaN(s.lat) && !isNaN(s.lng))
+        return NextResponse.json(
+          { ships, count: ships.length, sources: { Python: ships.length }, ts: Date.now() },
+          { headers: { 'Cache-Control': 'no-store' } },
+        )
+      }
+    } catch { /* Python backend unavailable, fall through to external APIs */ }
+  }
+
   const [bw, ah, sx, si] = await Promise.allSettled([
     fetchBarentsWatch(),
     fetchAISHub(),

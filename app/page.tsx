@@ -54,12 +54,6 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null)
   const [mode, setMode] = useState<'sat' | 'ship'>('sat')
 
-  // Sync vessel visibility with SAT/SHIP mode on mount — start with vessels hidden (SAT mode)
-  useEffect(() => {
-    if (showVessels) toggleVessels()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   // Fetch TLE data
   const fetchTLE = useCallback(async () => {
     setLoading(true)
@@ -156,7 +150,17 @@ export default function Home() {
       ws.onopen = () => {
         ws!.send(JSON.stringify({
           APIKey: '8b9d8625829bd9614947be967c141babc5931e79',
-          BoundingBoxes: [[[-90, -180], [90, 180]]],
+          // 4 × 4 global grid (exactly matching vessel-tra server.py)
+          BoundingBoxes: [
+            [[-90, -180], [-45, -90]], [[-90, -90],  [-45,   0]],
+            [[-90,    0], [-45,  90]], [[-90,  90],  [-45, 180]],
+            [[-45, -180], [  0, -90]], [[-45, -90],  [  0,   0]],
+            [[-45,    0], [  0,  90]], [[-45,  90],  [  0, 180]],
+            [[  0, -180], [ 45, -90]], [[  0, -90],  [ 45,   0]],
+            [[  0,    0], [ 45,  90]], [[  0,  90],  [ 45, 180]],
+            [[ 45, -180], [ 90, -90]], [[ 45, -90],  [ 90,   0]],
+            [[ 45,    0], [ 90,  90]], [[ 45,  90],  [ 90, 180]],
+          ],
           FilterMessageTypes: ['PositionReport', 'ShipStaticData'],
         }))
       }
@@ -281,7 +285,7 @@ export default function Home() {
           {/* SAT / SHIP mode toggle */}
           <div className="flex bg-gray-900/90 border border-gray-700/50 rounded-lg overflow-hidden">
             <button
-              onClick={() => { setMode('sat'); if (showVessels) toggleVessels() }}
+              onClick={() => setMode('sat')}
               className={`px-4 py-1.5 font-mono text-xs tracking-wider transition-all ${
                 mode === 'sat'
                   ? 'bg-intel-cyan/20 text-intel-cyan border-r border-intel-cyan/30'
@@ -291,7 +295,7 @@ export default function Home() {
               SAT
             </button>
             <button
-              onClick={() => { setMode('ship'); if (!showVessels) toggleVessels() }}
+              onClick={() => setMode('ship')}
               className={`px-4 py-1.5 font-mono text-xs tracking-wider transition-all ${
                 mode === 'ship'
                   ? 'bg-blue-500/20 text-blue-400'
