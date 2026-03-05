@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { TLESatellite, SatCategory, Quake, EONETEvent } from '@/lib/types'
+import type { TLESatellite, SatCategory, Quake, EONETEvent, AISVessel } from '@/lib/types'
 
 interface SatelliteStore {
   satellites: TLESatellite[]
@@ -24,6 +24,7 @@ interface SatelliteStore {
   sidebarCollapsed: boolean
   quakes: Quake[]
   events: EONETEvent[]
+  liveVessels: AISVessel[]
 
   setSatellites: (sats: TLESatellite[]) => void
   setCategory: (cat: SatCategory) => void
@@ -49,6 +50,7 @@ interface SatelliteStore {
   setSidebarCollapsed: (v: boolean) => void
   setQuakes: (q: Quake[]) => void
   setEvents: (e: EONETEvent[]) => void
+  setLiveVessels: (v: AISVessel[]) => void
 }
 
 export const useSatelliteStore = create<SatelliteStore>()((set) => ({
@@ -74,6 +76,7 @@ export const useSatelliteStore = create<SatelliteStore>()((set) => ({
   sidebarCollapsed: false,
   quakes: [] as Quake[],
   events: [] as EONETEvent[],
+  liveVessels: [] as AISVessel[],
 
   setSatellites: (sats: TLESatellite[]) => set({ satellites: sats }),
   setCategory: (cat: SatCategory) => set({ category: cat }),
@@ -103,4 +106,5 @@ export const useSatelliteStore = create<SatelliteStore>()((set) => ({
   setSidebarCollapsed: (v: boolean) => set({ sidebarCollapsed: v }),
   setQuakes: (q: Quake[]) => set({ quakes: q }),
   setEvents: (e: EONETEvent[]) => set({ events: e }),
+  setLiveVessels: (v: AISVessel[]) => set({ liveVessels: v }),
 }))

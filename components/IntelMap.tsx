@@ -12,7 +12,7 @@ import {
 import { guessOwnerFromName, getOwnerInfo } from '@/lib/country-map'
 import { JAMMING_ZONES, ADSB_FLIGHTS, AIS_VESSELS, GROUND_STATIONS } from '@/lib/intel-data'
 import { GIBS_LAYERS, getGIBSDate, getNDVIDate } from '@/lib/gibs-layers'
-import type { TLESatellite } from '@/lib/types'
+import type { TLESatellite, AISVessel } from '@/lib/types'
 
 // ── Satellite icon — detailed SVG with solar panels ──
 function createSatIcon(color: string, size: number, isLocked: boolean): L.DivIcon {
@@ -165,6 +165,7 @@ export default function IntelMap() {
     toggleLock,
     quakes,
     events,
+    liveVessels,
   } = useSatelliteStore()
 
   // Initialize map
@@ -353,7 +354,7 @@ export default function IntelMap() {
     })
   }, [showFlights])
 
-  // AIS Vessels — viewport culled
+  // AIS Vessels — static + live, viewport culled
   useEffect(() => {
     if (!mapRef.current) return
     vesselRef.current.forEach((m) => mapRef.current!.removeLayer(m))
@@ -361,7 +362,33 @@ export default function IntelMap() {
     if (!showVessels) return
 
     const bounds = mapRef.current.getBounds().pad(0.3)
-    AIS_VESSELS.forEach((vessel) => {
+
+    // Merge static vessels from intel-data + live vessels from API
+    const allVessels = [
+      ...AIS_VESSELS,
+      ...liveVessels.map((v: AISVessel) => ({
+        id: v.id,
+        name: v.name,
+        type: v.type,
+        lat: v.lat,
+        lng: v.lng,
+        course: v.course,
+        speed: v.speed,
+        flag: v.flag,
+      })),
+    ]
+
+    // Deduplicate by id (live takes priority for same id)
+    const seen = new Set<string>()
+    const deduped = []
+    for (let i = allVessels.length - 1; i >= 0; i--) {
+      if (!seen.has(allVessels[i].id)) {
+        seen.add(allVessels[i].id)
+        deduped.push(allVessels[i])
+      }
+    }
+
+    deduped.forEach((vessel) => {
       if (!bounds.contains([vessel.lat, vessel.lng])) return
       const marker = L.marker([vessel.lat, vessel.lng], {
         icon: createVesselIcon(vessel.type, vessel.course),
@@ -389,7 +416,7 @@ export default function IntelMap() {
       )
       vesselRef.current.set(vessel.id, marker)
     })
-  }, [showVessels])
+  }, [showVessels, liveVessels])
 
   // Ground Stations
   useEffect(() => {

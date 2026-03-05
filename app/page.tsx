@@ -45,6 +45,7 @@ export default function Home() {
     godsEyeMode, setGodsEyeMode,
     sidebarCollapsed, toggleSidebar,
     setQuakes, setEvents,
+    setLiveVessels, liveVessels,
     quakes, events,
   } = useSatelliteStore()
 
@@ -87,6 +88,32 @@ export default function Home() {
     }, 10 * 60 * 1000)
     return () => clearInterval(iv)
   }, [setQuakes, setEvents])
+
+  // Fetch live AIS ships
+  useEffect(() => {
+    const fetchShips = () => {
+      fetch('/api/ships')
+        .then(r => r.json())
+        .then(d => {
+          if (d.ships && d.ships.length > 0) {
+            setLiveVessels(d.ships.map((s: any) => ({
+              id: s.mmsi || s.id || String(Math.random()),
+              name: s.name || 'IDENTIFYING...',
+              type: s.type || 'Unknown',
+              lat: Number(s.lat),
+              lng: Number(s.lng || s.lon),
+              course: Number(s.course || 0),
+              speed: Number(s.speed || 0),
+              flag: s.country || s.flag || '🏳️',
+            })))
+          }
+        })
+        .catch(() => {})
+    }
+    fetchShips()
+    const iv = setInterval(fetchShips, 60 * 1000) // refresh every 60s
+    return () => clearInterval(iv)
+  }, [setLiveVessels])
 
   const activeJammed = JAMMING_ZONES.filter(z => z.active).length
 
@@ -153,7 +180,7 @@ export default function Home() {
           <div className="flex items-center gap-2 bg-gray-900/80 border border-gray-700/40 rounded-lg px-3 py-1.5 font-mono text-[10px]">
             <span className="text-intel-cyan">{satellites.length} SAT</span>
             <span className="text-gray-700">|</span>
-            <span className="text-blue-400">{AIS_VESSELS.length} SHIP</span>
+            <span className="text-blue-400">{AIS_VESSELS.length + liveVessels.length} SHIP</span>
             <span className="text-gray-700">|</span>
             <span className="text-red-400">{quakes.length} QUAKE</span>
             <span className="text-gray-700">|</span>
